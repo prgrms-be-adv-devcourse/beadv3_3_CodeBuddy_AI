@@ -21,13 +21,13 @@ services:
     ports:
       - "8001:8000"
     environment:
-      DATA_ROOT: "/data"
-      # CHROMA_HOST: "chromadb"
-      # CHROMA_PORT: "8000"
-      # AWS_DEFAULT_REGION: "ap-northeast-2"
+      RAW_ROOT: "/data/Validation/01.원천데이터"
+      LABEL_ROOT: "/data/Validation/02.라벨링데이터"
+      CHROMA_HOST: "${CHROMA_HOST}"
+      CHROMA_PORT: "${CHROMA_PORT}"
+      AWS_DEFAULT_REGION: "ap-northeast-2"
     depends_on:
       - chromadb
     restart: unless-stopped
     volumes:
-      -"C:\Users\ehjun\Documents\데브코스데이터\temp\008.의류_통합_데이터(착용_이미지,_치수_및_원단_정보)\01-1.정식개방데이터\Validation"
-
+      - "${DATA_SOURCE_PATH}:/data/Validation:ro"
