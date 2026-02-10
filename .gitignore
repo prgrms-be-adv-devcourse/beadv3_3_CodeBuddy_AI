@@ -219,3 +219,6 @@ __marimo__/
 
 # binary
 chroma_db
+
+#test 파일 (민감 정보 포함)
+test.ipynb
