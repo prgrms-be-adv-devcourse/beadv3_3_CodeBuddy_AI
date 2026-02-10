@@ -1,9 +1,11 @@
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from pathlib import Path
 import os, json
 
 from .pipeline import run_pipeline_from_bytes
 from ..adapters.chroma_adapter import ChromaAdapter
+
+from app.schemas.recschema import RecommendRequest, RecommendResponse
 
 COLLECTION_MAP = {"TOP": "fashion_items", "PANTS": "fashion_items_pants"}
 
@@ -92,8 +94,8 @@ class RecommendService:
         ids = (results.get("ids") or [[]])[0] or []
         metadatas = (results.get("metadatas") or [[]])[0] or []
 
-        product_ids: list[str] = []
-        filtered_neighbor_ids: list[str] = [] # 결과 JSON의 neighbors에 넣을 ID 리스트
+        product_ids: List[str] = []
+        filtered_neighbor_ids: List[str] = [] # 결과 JSON의 neighbors에 넣을 ID 리스트
 
         for i, meta in enumerate(metadatas):
             # 목표 개수(topk)를 채웠다면 중단
@@ -127,3 +129,16 @@ class RecommendService:
             },
             "product_ids": product_ids,
         }
+    
+    def recommend_many(self, reqs: List[RecommendRequest], topk: int = 4) -> List[RecommendResponse]:
+        out: List[RecommendResponse] = []
+        for r in reqs:
+            one = self.recommend(r.image_url, r.category, topk=topk)
+            out.append(
+                RecommendResponse(
+                    image_url=r.image_url,
+                    category=r.category.upper(),
+                    product_ids=one["product_ids"],
+                )
+            )
+        return out
