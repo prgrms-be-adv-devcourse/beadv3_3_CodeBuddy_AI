@@ -82,9 +82,7 @@ class S3Adapter:
 
     # 디버깅용 JSON 목록
     # S3에서 해당 json 파일이 없는 경우, 에러 메시지와 함께 같은 카테고리 아래 실제 존재하는 JSON 파일 3개의 경로를 추출해주는 함수
-    # 경로가 잘못된 경우
     def _list_prefix_jsons(self, prefix: str, limit: int = 3) -> list[str]:
-        """디버깅용 JSON 목록"""
         paginator = self._client.get_paginator("list_objects_v2")
         jsons = []
         for page in paginator.paginate(Bucket=self.bucket_name, Prefix=prefix):
