@@ -8,6 +8,7 @@ from ..adapters.chroma_adapter import ChromaAdapter
 from ..adapters.s3_adapter import S3Adapter
 from app.schemas.recschema import RecommendRequest, RecommendResponse
 
+# TOP/PANTS 요청 시 어떤 ChromaDB 컬렉션을 쓸지 결정
 COLLECTION_MAP = {"TOP": "fashion_items", "PANTS": "fashion_items_pants"}
 
 
