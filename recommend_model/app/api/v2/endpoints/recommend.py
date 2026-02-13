@@ -1,7 +1,7 @@
 from typing import List
 from fastapi import APIRouter, Depends, Request
-from app.schemas.recschema import RecommendRequest, RecommendResponse
-from app.services.recommend_service import RecommendService
+from ....schemas.recschema import RecommendRequest, RecommendResponse
+from ....services.recommend_service import RecommendService
 
 router = APIRouter()
 
