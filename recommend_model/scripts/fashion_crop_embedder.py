@@ -196,8 +196,8 @@ def process_image_batch(
 def main(
     image_glob: str,
     category: str,
-    chroma_host: str = "localhost",    # 👈 추가
-    chroma_port: str = "8000",         # 👈 추가
+    chroma_host: str = "localhost",
+    chroma_port: str = "8000",
     collection_name: str = "fashion_items_pants",
     batch_size: int = BATCH_SIZE,
     chroma_dir: str = "./chroma_data", 

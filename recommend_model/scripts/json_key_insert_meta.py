@@ -67,7 +67,7 @@ def infer_label_json_key(image_id: str, category: str) -> str:
 def backfill_label_json_key(client: chromadb.ClientAPI, collection_name: str, batch_size: int = 256):
     col = client.get_collection(collection_name)
     total = col.count()
-    print(f"🔄 Backfilling {collection_name}: {total} items")
+    print(f" Backfilling {collection_name}: {total} items")
 
     updated = 0
     for offset in range(0, total, batch_size):
@@ -83,34 +83,34 @@ def backfill_label_json_key(client: chromadb.ClientAPI, collection_name: str, ba
             
             try:
                 json_key = infer_label_json_key(image_id, category)
-                meta["label_json_key"] = json_key  # ★덮어쓰기★
+                meta["label_json_key"] = json_key
                 updated += 1
             except ValueError as e:
-                print(f"❌ SKIP: {e}")
+                print(f" SKIP: {e}")
             
             new_metas.append(meta)
         
         col.update(ids=ids, metadatas=new_metas)  # 전체 덮어쓰기
     
-    print(f"✅ UPDATED: {updated}/{total} in {collection_name}")
+    print(f" UPDATED: {updated}/{total} in {collection_name}")
 
 def verify(client: chromadb.ClientAPI):
     """덮어쓰기 확인"""
     for coll in ["fashion_items", "fashion_items_pants"]:
         col = client.get_collection(coll)
         sample = col.get(limit=3, include=["metadatas"])
-        print(f"\n📋 {coll} sample:")
+        print(f"\n {coll} sample:")
         for meta in sample.get("metadatas", []):
             print(f"  label_json_key: {meta.get('label_json_key')}")
 
 def main():
     client = chromadb.HttpClient(host="localhost", port=8000)
     
-    print("🔄 Starting backfill...")
+    print(" Starting backfill...")
     backfill_label_json_key(client, "fashion_items")
     backfill_label_json_key(client, "fashion_items_pants")
     
-    print("\n✅ VERIFICATION:")
+    print("\n VERIFICATION:")
     verify(client)
 
 if __name__ == "__main__":
