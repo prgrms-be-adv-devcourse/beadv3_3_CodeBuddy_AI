@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Depends
 from contextlib import asynccontextmanager
-
-from app.core.config import settings
+import os
+from .adapters.s3_adapter import S3Adapter
 from .adapters.chroma_adapter import ChromaAdapter
 from .services.recommend_service import RecommendService
 from .api.v2.routers import api_router
@@ -13,20 +13,34 @@ app.include_router(api_router, prefix="/v2")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # startup - S3 제거, 로컬 파일만
-    app.state.chroma = ChromaAdapter(
-        host=settings.chroma_host,  # "chromadb"
-        port=settings.chroma_port,  # 8000
+
+    # 1) chroma
+    # docker-compose.yml의 environment에서 설정한 값을 읽어옴
+    chroma = ChromaAdapter(
+        host=os.getenv("CHROMA_HOST", "chromadb"),
+        port=int(os.getenv("CHROMA_PORT", "8000")),
     )
     
-    # 모델 초기화 (변경 없음)
+
+    # 2) S3 init (추가)
+    bucket = os.environ["AWS_S3_BUCKET_NAME"]  # 없으면 여기서 KeyError로 바로 터짐
+    region = os.getenv("AWS_DEFAULT_REGION", "ap-northeast-2")
+    endpoint_url = os.getenv("S3_ENDPOINT_URL")
+
+    s3 = S3Adapter(
+        bucket_name=bucket,
+        region_name=region,
+        endpoint_url=endpoint_url,
+    )
+
+    # 모델 초기화
     app.state.yolos_rt = YolosRuntime(device="cpu")
     app.state.fclip_rt = FashionClipRuntime(device="cpu")
     
-    # 서비스 초기화 (S3 없이 로컬 파일만 처리하도록 수정 필요)
+    # 서비스 초기화
     app.state.recommend_service = RecommendService(
-        chroma=app.state.chroma,
-        # s3_adapter 제거 (RecommendService에서 로컬 파일 처리)
+        chroma=chroma,
+        s3=s3,
         yolos_rt=app.state.yolos_rt,
         fclip_rt=app.state.fclip_rt
     )

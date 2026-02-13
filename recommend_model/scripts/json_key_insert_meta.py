@@ -32,67 +32,86 @@ TOKEN_TO_FOLDER = {
     "jumpsuite": {"PANTS": "VL_PANTS_jumpsuite"},
 }
 
+import chromadb
 
-def infer_token_and_folder(image_id: str, category: str) -> str | None:
-    """추론 로직: image_id에서 token 찾고, category에 맞는 folder 반환"""
-    image_lower = image_id.lower()
-    cat = (category or "").upper()
-    
-    for token, cat_folders in TOKEN_TO_FOLDER.items():
-        if token in image_lower:
-            if cat_folders.get(cat):
-                return f"label_data/{cat}/{cat_folders[cat]}/{image_id}.json"
-    
-    return None  # 매치 안되면 None
+def _infer_label_folder_from_image_id(image_id: str, category: str) -> str | None:
+    img = image_id.lower()
+    cat = category.upper()
 
+    if cat == "TOP":
+        if "coat" in img:
+            return "VL_TOP_coat"
+        if "sweater" in img:
+            return "VL_TOP_sweater"
+        return None
 
-def backfill_label_json_key(
-    client: chromadb.ClientAPI,
-    collection_name: str,
-    batch_size: int = 256,
-    json_key_field: str = "label_json_key",
-):
+    if cat == "PANTS":
+        if "onepiece" in img:
+            if "jumpsuite" in img:
+                return "VL_PANTS_onepiece_jumpsuite"
+            if "dress" in img or "(dress)" in img:
+                return "VL_PANTS_onepiece_dress"
+            return "VL_PANTS_onepiece_dress"  # 기본값
+        if "bottom" in img or "pants" in img:
+            return "VL_PANTS_bottom"
+        return None
+
+    return None
+
+def infer_label_json_key(image_id: str, category: str) -> str:
+    folder = _infer_label_folder_from_image_id(image_id, category)
+    if not folder:
+        raise ValueError(f"Cannot infer folder for image_id={image_id}, category={category}")
+    return f"label_data/{category.upper()}/{folder}/{image_id}.json"
+
+def backfill_label_json_key(client: chromadb.ClientAPI, collection_name: str, batch_size: int = 256):
     col = client.get_collection(collection_name)
     total = col.count()
-    print(f"Processing {total} items in {collection_name}")
+    print(f" Backfilling {collection_name}: {total} items")
 
-    updated_count = 0
+    updated = 0
     for offset in range(0, total, batch_size):
         batch = col.get(include=["metadatas"], limit=batch_size, offset=offset)
         ids = batch.get("ids") or []
         metas = batch.get("metadatas") or []
-        if not ids:
-            break
-
+        
         new_metas = []
-        for rid, meta in zip(ids, metas):
-            meta = dict(meta or {})
-
-            # DB ids == image_id 형태라 통일
-            image_id = meta.get("image_id") or rid
-            category = meta.get("category")  # TOP / PANTS
-
-            # ✅ 고친 부분: 올바른 순서로 호출 (image_id, category)
-            json_key = infer_token_and_folder(image_id, category)
-            if json_key:
-                meta[json_key_field] = json_key
-                updated_count += 1
-            else:
-                print(f"No match: image_id={image_id}, category={category}")
-
+        for i, meta in enumerate(metas):
+            meta = dict(meta)
+            image_id = meta.get("image_id") or ids[i]
+            category = meta.get("category")
+            
+            try:
+                json_key = infer_label_json_key(image_id, category)
+                meta["label_json_key"] = json_key
+                updated += 1
+            except ValueError as e:
+                print(f" SKIP: {e}")
+            
             new_metas.append(meta)
+        
+        col.update(ids=ids, metadatas=new_metas)  # 전체 덮어쓰기
+    
+    print(f" UPDATED: {updated}/{total} in {collection_name}")
 
-        col.update(ids=ids, metadatas=new_metas)
-
-    print(f"Updated {updated_count}/{total} items in {collection_name}")
-    print("Sample metadatas:", col.get(limit=3, include=["metadatas"]))
-
+def verify(client: chromadb.ClientAPI):
+    """덮어쓰기 확인"""
+    for coll in ["fashion_items", "fashion_items_pants"]:
+        col = client.get_collection(coll)
+        sample = col.get(limit=3, include=["metadatas"])
+        print(f"\n {coll} sample:")
+        for meta in sample.get("metadatas", []):
+            print(f"  label_json_key: {meta.get('label_json_key')}")
 
 def main():
-    client = chromadb.HttpClient(host="localhost", port=8000)  # 환경에 맞게 수정
+    client = chromadb.HttpClient(host="localhost", port=8000)
+    
+    print(" Starting backfill...")
     backfill_label_json_key(client, "fashion_items")
     backfill_label_json_key(client, "fashion_items_pants")
-
+    
+    print("\n VERIFICATION:")
+    verify(client)
 
 if __name__ == "__main__":
     main()

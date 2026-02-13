@@ -7,7 +7,7 @@ import os
 
 # BaseModel을 상속하여 데이터 모델을 정의하고, 해당 모델의 필드와 유효성 검사 규칙을 설정할 수 있다.
 class Settings(BaseSettings):
-    chroma_host: str = os.getenv("CHROMA_HOST", "localhost")  # 👈 이게 핵심!
+    chroma_host: str = os.getenv("CHROMA_HOST", "localhost")
     chroma_port: int = int(os.getenv("CHROMA_PORT", 8000))
     aws_access_key_id: str | None = None  # IAM Role 우선
     aws_secret_access_key: str | None = None
