@@ -8,6 +8,10 @@ import boto3
 from botocore.exceptions import ClientError
 from botocore.config import Config
 
+from ..exception.errors import (
+    S3KeyNotFound, S3FetchError
+)
+
 logger = logging.getLogger(__name__)
 
 class S3Adapter:
@@ -26,12 +30,18 @@ class S3Adapter:
             aws_secret_access_key=aws_secret_access_key, endpoint_url=endpoint_url,
             config=Config(connect_timeout=5, read_timeout=30, retries={"max_attempts": 3}),
         )
-        self._client.list_buckets()  # 연결 테스트
 
     #S3 객체를 바이트로 다운로드
     def get_bytes(self, key: str) -> bytes:
-        resp = self._client.get_object(Bucket=self.bucket_name, Key=key)
-        return resp["Body"].read()
+        try:
+            resp = self._client.get_object(Bucket=self.bucket_name, Key=key)
+            return resp["Body"].read()
+        except ClientError as e:
+            error_code = e.response["Error"]["Code"]
+            if error_code == "NoSuchKey":
+                raise S3KeyNotFound(key)
+            else:
+                raise S3FetchError(key, str(e))
 
     # S3 JSON 파일을 Python dict로 파싱
     def get_json(self, key: str) -> dict[str, Any]:
