@@ -16,17 +16,13 @@ class InvalidImageUrl(AppError):
     def __init__(self, image_url: str):
         super().__init__("INVALID_IMAGE_URL", 400, "image_url must start with s3://", {"image_url": image_url})
 
-class InvalidTopK(AppError):
-    def __init__(self, topk: int):
-        super().__init__("INVALID_TOPK", 400, "topk must be between 1 and 50.", {"topk": topk})
-
+class UnsupportedCategory(AppError):
+    def __init__(self, category: str):
+        super().__init__("UNSUPPORTED_CATEGORY", 400, "Unsupported category.", {"category": category})
+    
 class S3KeyNotFound(AppError):
     def __init__(self, key: str):
         super().__init__("S3_KEY_NOT_FOUND", 404, "S3 object not found.", {"key": key})
-
-class S3AccessDenied(AppError):
-    def __init__(self, key: str):
-        super().__init__("S3_ACCESS_DENIED", 403, "S3 access denied.", {"key": key})
 
 class S3FetchError(AppError):
     def __init__(self, key: str, reason: str):

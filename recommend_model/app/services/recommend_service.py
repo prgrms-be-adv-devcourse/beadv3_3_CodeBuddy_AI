@@ -10,8 +10,8 @@ from ..schemas.recschema import RecommendRequest, RecommendResponse
 from botocore.exceptions import ClientError
 
 from ..exception.errors import (
-    InvalidImageUrl, InvalidTopK,
-    S3KeyNotFound, S3AccessDenied, S3FetchError,
+    InvalidImageUrl, UnsupportedCategory,
+    S3KeyNotFound, S3FetchError,
     PipelineError, ChromaQueryError,
 )
 
@@ -60,17 +60,14 @@ class RecommendService:
             code = _aws_error_code(e)
             if code in ("NoSuchKey", "404", "NotFound"):
                 raise S3KeyNotFound(key)
-            if code in ("AccessDenied", "403"):
-                raise S3AccessDenied(key)
             raise S3FetchError(key, reason=f"ClientError:{code}")
         except Exception as e:
             raise S3FetchError(key, reason=repr(e))
 
     def recommend(self, image_url: str, category: str, topk: int = 4) -> Dict[str, Any]:
 
-        if not isinstance(topk, int) or topk <= 0 or topk > 50:
-            raise InvalidTopK(topk)
-        
+        if category.upper() not in ["TOP", "PANTS"]:
+            raise UnsupportedCategory(category)
         # 1) S3 URL 파싱
         img_key = self._s3_url_to_key(image_url)
         img_bytes = self.s3.get_bytes(img_key)
