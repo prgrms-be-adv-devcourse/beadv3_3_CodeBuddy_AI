@@ -8,6 +8,9 @@ from PIL import Image
 from io import BytesIO
 from typing import Optional, Dict, Any
 
+from PIL import UnidentifiedImageError
+from ..exception.errors import PipelineError
+
 # -----------------------
 # Constants
 # -----------------------
@@ -178,18 +181,22 @@ def run_pipeline_from_bytes(
     bytes -> PIL -> YOLOS crop(1개) -> FashionCLIP embedding
     (S3/Chroma 접근 없음)
     """
-    image = load_image_from_bytes(img_bytes)
-
-    crop_item = detect_one_crop(
+    try:
+        image = load_image_from_bytes(img_bytes)
+        crop_item = detect_one_crop(
         image=image,
         yolos_rt=yolos_rt,
         score_thresh=score_thresh,
         category=category,
-    )
-    if crop_item is None:
-        return None
-
-    return embed_one_crop(crop_item=crop_item, fclip_rt=fclip_rt, l2_normalize=True)
+        )
+        if crop_item is None:
+            raise PipelineError("No detection found")
+        return embed_one_crop(crop_item=crop_item, fclip_rt=fclip_rt, l2_normalize=True)
+    except UnidentifiedImageError as e:
+        raise PipelineError(f"Invalid image bytes: {e}") from e
+    except Exception as e:
+        raise PipelineError(str(e)) from e
+    
 #여기서 가장 느린 부분은 모델 추론(특히 GPU 없으면 더 느림)과 S3 다운로드입니다.
 
 #동기 처리로 운영하면 동시 요청이 많을 때 병목이 생길 수 있으니, 

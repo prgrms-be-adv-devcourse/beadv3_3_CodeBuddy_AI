@@ -1,6 +1,7 @@
 #FastAPI와 Docker ChromaDB 서버 사이의 연결 어댑터
 
 import chromadb
+from ..exception.errors import ChromaQueryError
 
 class ChromaAdapter:
     def __init__(self, host: str, port: int):
@@ -14,9 +15,12 @@ class ChromaAdapter:
 
     # 벡터 검색 query(핵심 메서드)
     def query(self, collection_name: str, query_embedding: list, n_results: int, where: dict | None = None):
-        col = self.get_collection(collection_name)
-        return col.query(
-            query_embeddings=[query_embedding], # 검색할 임베딩 (512차원)
-            n_results=n_results, # 상위 N개 결과 ex) n_results: 4  # 상위 4개 추천
-            where=where, # 메타데이터 필터 ex) where: {"category": "TOP"}  # TOP 카테고리만 검색
-        )
+        try:
+            col = self.get_collection(collection_name)
+            return col.query(
+                query_embeddings=[query_embedding],
+                n_results=n_results,
+                where=where,
+            )
+        except Exception as e:
+            raise ChromaQueryError(collection=collection_name, reason=str(e)) from e

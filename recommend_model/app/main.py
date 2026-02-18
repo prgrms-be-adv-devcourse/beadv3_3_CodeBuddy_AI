@@ -8,7 +8,11 @@ from .api.v2.routers import api_router
 from .models_runtime.yolos import YolosRuntime
 from .models_runtime.fashionclip import FashionClipRuntime
 
+from .exception.handlers import install_exception_handlers
+
 app = FastAPI(title="Recommendation API")
+
+install_exception_handlers(app)
 app.include_router(api_router, prefix="/v2")
 
 @asynccontextmanager
@@ -22,8 +26,8 @@ async def lifespan(app: FastAPI):
     )
     
 
-    # 2) S3 init (추가)
-    bucket = os.environ["AWS_S3_BUCKET_NAME"]  # 없으면 여기서 KeyError로 바로 터짐
+    # 2) S3 init
+    bucket = os.environ["AWS_S3_BUCKET_NAME"]
     region = os.getenv("AWS_DEFAULT_REGION", "ap-northeast-2")
     endpoint_url = os.getenv("S3_ENDPOINT_URL")
 
