@@ -228,3 +228,5 @@ docker-compose.yml
 Dockerfile
 
 test_check_jsonkey.ipynb
+
+scripts/
