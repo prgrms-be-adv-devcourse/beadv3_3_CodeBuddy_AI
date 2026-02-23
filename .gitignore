@@ -219,6 +219,7 @@ __marimo__/
 
 # binary
 chroma_db
+chroma_db_path
 
 #test 파일 (민감 정보 포함)
 test.ipynb
@@ -230,3 +231,5 @@ Dockerfile
 test_check_jsonkey.ipynb
 
 scripts/
+**/scripts/**
+scripts/*
