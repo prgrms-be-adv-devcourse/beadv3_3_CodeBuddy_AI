@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Depends
 from contextlib import asynccontextmanager
 import os
+import asyncio
 from .adapters.s3_adapter import S3Adapter
 from .adapters.chroma_adapter import ChromaAdapter
 from .services.recommend_service import RecommendService
@@ -9,6 +10,8 @@ from .models_runtime.yolos import YolosRuntime
 from .models_runtime.fashionclip import FashionClipRuntime
 
 from .exception.handlers import install_exception_handlers
+from .kafka.kafka_producer import RecommendKafkaProducer
+from .kafka.kafka_consumer import RecommendKafkaConsumer
 
 app = FastAPI(title="Recommendation API")
 
@@ -48,8 +51,29 @@ async def lifespan(app: FastAPI):
         yolos_rt=app.state.yolos_rt,
         fclip_rt=app.state.fclip_rt
     )
+
+    # 3) Kafka 초기화
+    bootstrap_servers = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
+
+    producer = RecommendKafkaProducer(bootstrap_servers)
+    await producer.start()
+
+    consumer = RecommendKafkaConsumer(
+        bootstrap_servers=bootstrap_servers,
+        recommend_service=app.state.recommend_service,
+        producer=producer,
+    )
+    await consumer.start()
+
+    # 백그라운드에서 Kafka 메시지 소비 시작
+    consume_task = asyncio.create_task(consumer.consume_loop())
     
     yield
-    print("Shutting down models and services...")
+
+    # 종료 시 Kafka 정리
+    consume_task.cancel()
+    await consumer.stop()
+    await producer.stop()
+    print("Shutting down Kafka and services...")
 
 app.router.lifespan_context = lifespan
